@@ -1,0 +1,19 @@
+{
+  "name": "got-character-app",
+  "version": "1.0.0",
+  "description": "Game of Thrones character fetcher with MongoDB storage",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongodb": "^6.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
