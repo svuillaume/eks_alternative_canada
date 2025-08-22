@@ -1,32 +1,18 @@
-terraform {
-  required_version = ">= 1.0"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-       version = "~> 6.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = "ca-central-1"
-}
-
-# Find existing VPC
-data "aws_vpc" "sam-vpc" {
+# Find existing VPC by tag name
+data "aws_vpc" "sam_vpc" {
   filter {
     name   = "tag:Name"
-    values = ["sam-vpc"]
+    values = [var.vpc_name]
   }
 }
 
-# Find private subnet
-data "aws_subnet" "sam-vpc-private-ca-central-1a" {
+# Find private subnet by tag name
+data "aws_subnet" "sam_vpc_private" {
   filter {
     name   = "tag:Name"
-    values = ["sam-vpc-private-ca-central-1a"]
+    values = [var.private_subnet_name]
   }
-  vpc_id = data.aws_vpc.sam-vpc.id
+  vpc_id = data.aws_vpc.sam_vpc.id
 }
 
 # Get latest Ubuntu 20.04 AMI
@@ -43,28 +29,25 @@ data "aws_ami" "ubuntu_20_04" {
   }
 }
 
-# Security group for SSH and MongoDB
+# Security group for SSH and MongoDB access
 resource "aws_security_group" "mongodb_sg" {
   name_prefix = "mongodb-instance-"
-  vpc_id      = data.aws_vpc.sam-vpc.id
+  vpc_id      = data.aws_vpc.sam_vpc.id
 
-  # SSH access - consider restricting to VPC CIDR or bastion host
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.sam-vpc.cidr_block] # More secure than 0.0.0.0/0
+    cidr_blocks = [data.aws_vpc.sam_vpc.cidr_block]
   }
 
-  # MongoDB access within VPC
   ingress {
     from_port   = 27017
     to_port     = 27017
     protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.sam-vpc.cidr_block]
+    cidr_blocks = [data.aws_vpc.sam_vpc.cidr_block]
   }
 
-  # Allow all outbound
   egress {
     from_port   = 0
     to_port     = 0
@@ -77,17 +60,14 @@ resource "aws_security_group" "mongodb_sg" {
   }
 }
 
-# EC2 instance
+# EC2 instance for MongoDB
 resource "aws_instance" "mongodb_instance" {
   ami                    = data.aws_ami.ubuntu_20_04.id
-  instance_type          = "t3.small"
-  subnet_id              = data.aws_subnet.sam-vpc-private-ca-central-1a.id
+  instance_type          = var.instance_type
+  subnet_id              = data.aws_subnet.sam_vpc_private.id
   vpc_security_group_ids = [aws_security_group.mongodb_sg.id]
+  key_name               = var.key_name
 
-  # Key pair for SSH
-  key_name = "samv-ssh"
-
-  # Root volume
   root_block_device {
     volume_type = "gp3"
     volume_size = 100
@@ -97,12 +77,11 @@ resource "aws_instance" "mongodb_instance" {
     }
   }
 
-  # Run your existing template on first boot
   user_data = file("${path.module}/mongodb.tpl")
 
   tags = {
-    Name = "mongodb-instance"
-    Environment = "education"
+    Name        = "mongodb-instance"
+    Environment = "demo"
   }
 }
 
@@ -121,3 +100,4 @@ output "mongodb_connection_string" {
   description = "MongoDB connection string for internal use"
   value       = "mongodb://${aws_instance.mongodb_instance.private_ip}:27017"
 }
+
