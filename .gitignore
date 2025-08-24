@@ -1,4 +1,20 @@
+<<<<<<< HEAD
 terraform.tfstate
 terraform.tfstate.backup
 .terraform.lock.hcl
 .terraform
+=======
+#secrets
+sam_demo.pem 
+# Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform directories
+.terraform/
+
+# Optional: ignore local variable files
+*.tfvars
+
+>>>>>>> 087144e (update remove secrets)
